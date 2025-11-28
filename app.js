@@ -10,6 +10,7 @@ const defaultServices = [
   { id: 4, name: 'Barba & Perfilado', duration: 30, price: 12000 }
 ];
 const defaultTimeSlots = ['09:00', '10:30', '12:00', '14:00', '15:30', '17:00'];
+const API_BASE = "https://web-production-b923d.up.railway.app"; // arriba del archivo, igual que en admin
 
 function getData(key, fallback) {
   try {
@@ -318,14 +319,17 @@ function onConfirmAppointment() {
   // setData(LS_APPOINTMENTS_KEY, appointments);
   // openGenericModal(...)
 
-  // ✅ Ahora: guardar turno en el backend
-  fetch("https://web-production-b923d.up.railway.app/", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(appointment)
-  })
+
+// ...
+
+fetch(`${API_BASE}/api/appointments`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify(appointment)
+})
+
     .then(r => r.json())
     .then(() => {
       openGenericModal(

@@ -24,6 +24,8 @@ const adminModal = document.getElementById('adminModal');
 const adminModalTitle = document.getElementById('adminModalTitle');
 const adminModalMessage = document.getElementById('adminModalMessage');
 const adminModalCloseBtn = document.getElementById('adminModalCloseBtn');
+const API_BASE = "https://web-production-b923d.up.railway.app";
+
 
 const defaultStylists = [
   { id: 1, name: 'Danilo Dandelo' }
@@ -61,8 +63,11 @@ let appointments = [];
 
 // 🔄 Cargar turnos desde el backend
 function loadAppointmentsFromBackend() {
-  fetch("https://web-production-b923d.up.railway.app/")
-    .then(r => r.json())
+  fetch(`${API_BASE}/api/appointments`)
+    .then(r => {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    })
     .then(data => {
       appointments = (data || []).map(a => ({
         ...a,
@@ -76,6 +81,7 @@ function loadAppointmentsFromBackend() {
       renderAppointmentsAdmin();
     });
 }
+
 
 function openAdminModal(title, message) {
   adminModalTitle.textContent = title;
