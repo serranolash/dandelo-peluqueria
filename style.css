@@ -1,0 +1,14 @@
+.app-body {
+  position: relative;
+  min-height: 100vh;
+  background: #050505;   /* negro metalero */
+  color: #e5e7eb;
+  overflow-x: hidden;
+}
+
+
+/* Paneles tipo vidrio oscuro, translúcidos */
+.bg-glass-dark {
+  background: rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(6px);
+}

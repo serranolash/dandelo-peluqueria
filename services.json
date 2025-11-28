@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1,
+    "name": "Corte Caballero",
+    "duration": 45,
+    "price": 15000
+  },
+  {
+    "id": 2,
+    "name": "Corte Dama",
+    "duration": 60,
+    "price": 20000
+  },
+  {
+    "id": 3,
+    "name": "Tinte Completo",
+    "duration": 90,
+    "price": 40000
+  },
+  {
+    "id": 4,
+    "name": "Barba & Perfilado",
+    "duration": 30,
+    "price": 12000
+  }
+]

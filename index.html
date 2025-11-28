@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dandelo Peluquería - Turnos</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#020617" />
+  <link rel="icon" type="image/svg+xml" href="logo-lion.svg" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
+
+  <!-- Fuente Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Estilos propios -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="app-body min-h-screen flex flex-col">
+  <!-- HEADER -->
+  <header class="w-full border-b border-neutral-800 bg-neutral-950/70 backdrop-blur-md relative z-10">
+    <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-black/60 border border-amber-400/40 flex items-center justify-center shadow-[0_0_25px_rgba(250,204,21,0.35)]">
+          <img src="logo-lion.svg" alt="Logo Dandelo Peluquería" class="w-8 h-8">
+        </div>
+        <div>
+          <h1 class="text-xl font-semibold tracking-tight text-amber-300">
+            Dandelo Peluquería
+          </h1>
+          <p class="text-[11px] text-neutral-400">Rock • Metal • Estilo con actitud</p>
+        </div>
+      </div>
+      <button
+        id="openPaymentsBtn"
+        class="text-xs px-3 py-1.5 rounded-full border border-amber-400/60 text-amber-200 hover:bg-amber-400/10 transition shadow-[0_0_12px_rgba(250,204,21,0.3)]"
+      >
+        Métodos de pago
+      </button>
+    </div>
+  </header>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main class="flex-1 w-full relative z-10">
+    <div class="max-w-3xl mx-auto px-4 py-6">
+
+      <!-- LEÓN ARRIBA DEL FORMULARIO -->
+      <div class="flex justify-center mb-5">
+        <img
+          src="assets/lion-bg.png"
+          alt="León Dandelo"
+          class="w-56 h-56 object-contain rounded-2xl border border-amber-400/40 shadow-[0_0_30px_rgba(250,204,21,0.35)]"
+        />
+      </div>
+
+      <!-- CARD PRINCIPAL: RESERVAR TURNO -->
+      <section class="bg-glass-dark border border-neutral-800/90 rounded-2xl shadow-[0_0_40px_rgba(24,24,27,0.95)] p-5 sm:p-6">
+        <h2 class="text-lg font-semibold mb-1 flex items-center gap-2">
+          Reservar turno
+          <span class="text-[11px] font-normal text-neutral-300 border border-amber-400/50 rounded-full px-2 py-0.5 bg-black/50">
+            3 pasos
+          </span>
+        </h2>
+        <p class="text-xs text-neutral-400 mb-4">
+          Elegí el servicio, horario y tus datos para confirmar tu turno.
+        </p>
+
+        <!-- Pasos -->
+        <ol class="flex flex-wrap gap-2 text-xs mb-5">
+          <li class="step-indicator step-active" data-step="1">
+            <span class="step-circle">1</span> Servicio & estilista
+          </li>
+          <li class="step-indicator" data-step="2">
+            <span class="step-circle">2</span> Fecha & hora
+          </li>
+          <li class="step-indicator" data-step="3">
+            <span class="step-circle">3</span> Confirmación
+          </li>
+        </ol>
+
+        <!-- STEP 1 -->
+        <div id="step1" class="step-panel">
+          <h3 class="text-sm font-semibold mb-3">1. Elegí el servicio</h3>
+          <div id="servicesList" class="space-y-2 mb-4 text-sm">
+            <!-- Servicios cargados por app.js -->
+          </div>
+
+          <h3 class="text-sm font-semibold mb-2">Estilista</h3>
+          <select
+            id="stylistSelect"
+            class="w-full text-sm bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-amber-400/80"
+          >
+            <!-- Estilistas cargados por app.js -->
+          </select>
+
+          <button
+            id="toStep2Btn"
+            class="mt-4 w-full sm:w-auto px-4 py-2.5 rounded-xl bg-amber-400 text-neutral-900 font-medium text-sm hover:bg-amber-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Continuar a fecha & hora
+          </button>
+        </div>
+
+        <!-- STEP 2 -->
+        <div id="step2" class="step-panel hidden">
+          <h3 class="text-sm font-semibold mb-3">2. Elegí fecha</h3>
+          <div class="flex items-center justify-between mb-2 text-xs">
+            <button
+              id="prevMonthBtn"
+              class="px-2 py-1 rounded-lg border border-neutral-700 hover:bg-neutral-900/80"
+            >
+              ◀
+            </button>
+            <span id="currentMonthLabel" class="font-medium text-neutral-100"></span>
+            <button
+              id="nextMonthBtn"
+              class="px-2 py-1 rounded-lg border border-neutral-700 hover:bg-neutral-900/80"
+            >
+              ▶
+            </button>
+          </div>
+          <div id="calendarGrid" class="grid grid-cols-7 gap-1 text-[10px] mb-4">
+            <!-- Calendario generado por app.js -->
+          </div>
+
+          <h3 class="text-sm font-semibold mb-2">Horario disponible</h3>
+          <div id="timeSlots" class="flex flex-wrap gap-2 text-xs mb-4">
+            <!-- Turnos horarios generados por app.js -->
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-2 mt-2">
+            <button
+              id="backToStep1"
+              class="w-full sm:w-auto px-4 py-2 rounded-xl border border-neutral-700 text-xs hover:bg-neutral-900/80"
+            >
+              ◀ Volver
+            </button>
+            <button
+              id="toStep3Btn"
+              class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-amber-400 text-neutral-900 font-medium text-sm hover:bg-amber-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Continuar a confirmación
+            </button>
+          </div>
+        </div>
+
+        <!-- STEP 3 -->
+        <div id="step3" class="step-panel hidden">
+          <h3 class="text-sm font-semibold mb-3">3. Confirmá tu turno</h3>
+
+          <div
+            id="summaryBox"
+            class="text-xs bg-neutral-950 border border-neutral-800 rounded-xl p-3 mb-4 space-y-1"
+          >
+            <!-- Resumen generado por app.js -->
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 text-sm">
+            <div>
+              <label
+                class="block text-xs text-neutral-400 mb-1"
+                for="clientName"
+              >
+                Nombre y apellido
+              </label>
+              <input
+                id="clientName"
+                type="text"
+                class="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400/80"
+                placeholder="Ej: Juan Pérez"
+              >
+            </div>
+            <div>
+              <label
+                class="block text-xs text-neutral-400 mb-1"
+                for="clientContact"
+              >
+                Contacto (WhatsApp / Teléfono)
+              </label>
+              <input
+                id="clientContact"
+                type="text"
+                class="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400/80"
+                placeholder="Ej: +54 9 11..."
+              >
+            </div>
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-2 mt-2">
+            <button
+              id="backToStep2"
+              class="w-full sm:w-auto px-4 py-2 rounded-xl border border-neutral-700 text-xs hover:bg-neutral-900/80"
+            >
+              ◀ Volver
+            </button>
+            <button
+              id="confirmAppointmentBtn"
+              class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-amber-400 text-neutral-900 font-medium text-sm hover:bg-amber-300 transition"
+            >
+              Confirmar turno
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- PIE DE PÁGINA / LINK A ADMIN -->
+      <section class="mt-5 text-[11px] text-neutral-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <p>📍 Dandelo Peluquería – Turnos online con vibra rock & metal.</p>
+        <a href="admin.html" class="underline underline-offset-2 hover:text-amber-300">
+          Panel administrador
+        </a>
+      </section>
+    </div>
+  </main>
+
+  <!-- MODAL MÉTODOS DE PAGO -->
+  <div
+    id="paymentsModal"
+    class="fixed inset-0 bg-black/70 flex items-center justify-center z-40 hidden"
+  >
+    <div class="bg-neutral-950 border border-neutral-700 rounded-2xl max-w-md w-full mx-4 p-5 text-sm relative shadow-[0_0_40px_rgba(59,7,100,0.8)]">
+      <button
+        id="closePaymentsBtn"
+        class="absolute top-3 right-3 text-neutral-500 hover:text-neutral-200 text-lg leading-none"
+      >
+        ×
+      </button>
+      <h3 class="text-base font-semibold mb-3 text-amber-300">
+        Métodos de pago
+      </h3>
+      <div class="space-y-3 text-xs">
+        <div class="border border-neutral-700 rounded-xl p-3 bg-black/40">
+          <h4 class="font-semibold mb-1 text-amber-200">Mercado Pago</h4>
+          <p class="text-neutral-300 mb-1">
+            Alias: <span class="font-mono text-neutral-100">dandelo.peluqueria.mp</span>
+          </p>
+          <p class="text-neutral-500 text-[11px]">
+            Mostrá el QR en el local para pagar de forma rápida.
+          </p>
+        </div>
+        <div class="border border-neutral-700 rounded-xl p-3 bg-black/40">
+          <h4 class="font-semibold mb-1 text-amber-200">Transferencia bancaria</h4>
+          <p class="text-neutral-300">
+            CBU: <span class="font-mono text-neutral-100">0000003100012345678901</span>
+          </p>
+          <p class="text-neutral-300">
+            Alias: <span class="font-mono text-neutral-100">dandelo.peluqueria.banco</span>
+          </p>
+          <p class="text-neutral-300">
+            Titular: <span class="font-mono text-neutral-100">Danilo Dandelo</span>
+          </p>
+        </div>
+        <p class="text-[11px] text-neutral-400">
+          El pago puede ser anticipado o luego del servicio, según prefieras.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL GENÉRICO DE MENSAJES -->
+  <div
+    id="genericModal"
+    class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden"
+  >
+    <div class="bg-neutral-950 border border-neutral-700 rounded-2xl max-w-sm w-full mx-4 p-5 text-sm text-center relative shadow-[0_0_40px_rgba(148,163,184,0.5)]">
+      <h3 id="genericModalTitle" class="text-base font-semibold mb-2 text-amber-300"></h3>
+      <p id="genericModalMessage" class="text-xs text-neutral-200 mb-4"></p>
+      <button
+        id="genericModalCloseBtn"
+        class="px-4 py-2 rounded-xl bg-amber-400 text-neutral-900 text-xs font-medium hover:bg-amber-300"
+      >
+        Entendido
+      </button>
+    </div>
+  </div>
+
+  <!-- LÓGICA DE LA APP -->
+  <script src="app.js"></script>
+
+  <!-- REGISTRO SERVICE WORKER (PWA) -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('service-worker.js').catch(function(err) {
+          console.log('SW registration failed', err);
+        });
+      });
+    }
+  </script>
+</body>
+</html>

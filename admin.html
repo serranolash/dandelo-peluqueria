@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel Admin - Dandelo Peluquería</title>
+
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#020617" />
+  <link rel="icon" type="image/svg+xml" href="logo-lion.svg" />
+
+  <!-- Fuente Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="app-body min-h-screen flex flex-col">
+  <div class="psy-bg"></div>
+  <header class="w-full border-b border-neutral-800 bg-neutral-950/70 backdrop-blur-md relative z-10">
+    <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-2xl bg-black/60 border border-amber-400/40 flex items-center justify-center shadow-[0_0_22px_rgba(250,204,21,0.35)]">
+          <img src="logo-lion.svg" alt="Logo Dandelo Peluquería" class="w-7 h-7">
+        </div>
+        <div>
+          <h1 class="text-xl font-semibold tracking-tight text-amber-300">
+            Admin – Dandelo Peluquería
+          </h1>
+          <p class="text-xs text-neutral-400">Gestión de servicios, peluqueros y turnos</p>
+        </div>
+      </div>
+      <a href="index.html" class="text-xs px-3 py-1.5 rounded-full border border-neutral-700 hover:bg-neutral-900/80 relative z-10">
+        Volver a turnos
+      </a>
+    </div>
+  </header>
+
+  <main class="flex-1 w-full relative z-10">
+    <div class="max-w-4xl mx-auto px-4 py-6">
+      <section id="loginSection" class="max-w-sm mx-auto bg-neutral-950/85 border border-neutral-800 rounded-2xl p-5 shadow-[0_0_40px_rgba(15,23,42,0.95)] backdrop-blur-md">
+        <h2 class="text-base font-semibold mb-2">Ingreso administrador</h2>
+        <p class="text-xs text-neutral-400 mb-4">
+          Ingresá la contraseña para administrar servicios, peluqueros y revisar turnos.
+        </p>
+
+        <label class="block text-xs text-neutral-400 mb-1" for="adminPassword">
+          Contraseña
+        </label>
+        <input id="adminPassword" type="password" class="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 mb-4" placeholder="••••••••">
+        <button id="loginBtn" class="w-full px-4 py-2.5 rounded-xl bg-amber-400 text-neutral-900 text-sm font-medium hover:bg-amber-300">
+          Ingresar
+        </button>
+        <p class="text-[11px] text-neutral-500 mt-3">
+          Contraseña por defecto: <span class="font-mono text-neutral-200">dandelo123</span> (podés cambiarla luego en el código).
+        </p>
+      </section>
+
+      <section id="adminSection" class="hidden space-y-5">
+        <div class="bg-gradient-to-r from-purple-900/40 via-amber-500/10 to-emerald-500/20 border border-amber-400/30 rounded-2xl p-4 flex items-start gap-3 text-xs shadow-[0_0_40px_rgba(109,40,217,0.6)]">
+          <div class="mt-0.5 text-lg">⚙️</div>
+          <div>
+            <h2 class="text-sm font-semibold mb-1 text-amber-200">Panel de control</h2>
+            <p class="text-neutral-200">
+              Ajustá precios, duración, agregá peluqueros y gestioná los turnos del día. Si surge una emergencia, podés marcar turnos como cancelados para avisar rápidamente al cliente.
+            </p>
+          </div>
+        </div>
+
+        <div class="bg-neutral-950/85 border border-neutral-800 rounded-2xl p-4 backdrop-blur-md">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-semibold flex items-center gap-2">
+              Peluqueros
+              <span class="text-[10px] text-neutral-400 border border-neutral-700 rounded-full px-2 py-0.5">
+                Inicial: Danilo Dandelo (podés sumar más)
+              </span>
+            </h3>
+            <button id="addStylistBtn" class="text-xs px-3 py-1.5 rounded-full border border-emerald-400/60 text-emerald-200 hover:bg-emerald-400/10">
+              + Agregar peluquero
+            </button>
+          </div>
+          <div id="stylistsList" class="space-y-2 text-xs"></div>
+        </div>
+
+        <div class="bg-neutral-950/85 border border-neutral-800 rounded-2xl p-4 backdrop-blur-md">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-semibold">Servicios</h3>
+            <button id="addServiceBtn" class="text-xs px-3 py-1.5 rounded-full border border-amber-400/60 text-amber-200 hover:bg-amber-400/10">
+              + Agregar servicio
+            </button>
+          </div>
+          <div id="servicesAdminList" class="space-y-2 text-xs"></div>
+        </div>
+
+        <div class="bg-neutral-950/85 border border-neutral-800 rounded-2xl p-4 backdrop-blur-md">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-semibold flex items-center gap-2">
+              Turnos agendados
+              <span class="text-[10px] text-neutral-400 border border-neutral-700 rounded-full px-2 py-0.5">
+                Vista rápida para hoy y próximos días
+              </span>
+            </h3>
+            <div class="flex items-center gap-2 text-[11px]">
+              <label class="inline-flex items-center gap-1 text-neutral-300">
+                <input id="filterOnlyPending" type="checkbox" class="w-3 h-3 rounded border-neutral-600 bg-neutral-950">
+                Solo pendientes
+              </label>
+            </div>
+          </div>
+
+          <div id="appointmentsList" class="space-y-2 text-[11px] max-h-80 overflow-y-auto pr-1">
+          </div>
+
+          <p class="mt-2 text-[11px] text-neutral-500">
+            Sugerencia: si tenés una emergencia, marcá los turnos como <span class="text-red-300">Cancelado</span> y avisá al cliente por WhatsApp usando el número que figura en la tarjeta.
+          </p>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-2">
+          <button id="saveAdminChangesBtn" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-amber-400 text-neutral-900 text-sm font-medium hover:bg-amber-300">
+            Guardar cambios
+          </button>
+          <button id="resetDataBtn" class="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-red-500/60 text-red-300 text-xs hover:bg-red-500/10">
+            Restaurar datos por defecto
+          </button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div id="adminModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden">
+    <div class="bg-neutral-950 border border-neutral-700 rounded-2xl max-w-sm w-full mx-4 p-5 text-sm text-center relative shadow-[0_0_40px_rgba(59,7,100,0.8)]">
+      <h3 id="adminModalTitle" class="text-base font-semibold mb-2 text-amber-300"></h3>
+      <p id="adminModalMessage" class="text-xs text-neutral-200 mb-4"></p>
+      <button id="adminModalCloseBtn" class="px-4 py-2 rounded-xl bg-amber-400 text-neutral-900 text-xs font-medium hover:bg-amber-300">
+        Entendido
+      </button>
+    </div>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>
