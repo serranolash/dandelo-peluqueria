@@ -57,12 +57,25 @@ function setData(key, value) {
 
 let stylists = getData(LS_STYLISTS_KEY, defaultStylists);
 let services = getData(LS_SERVICES_KEY, defaultServices);
-let appointments = getData(LS_APPOINTMENTS_KEY, []);
+let appointments = [];
 
-appointments = appointments.map(a => ({
-  ...a,
-  status: a.status || 'pendiente',
-}));
+// 🔄 Cargar turnos desde el backend
+function loadAppointmentsFromBackend() {
+  fetch("https://web-production-b923d.up.railway.app/")
+    .then(r => r.json())
+    .then(data => {
+      appointments = (data || []).map(a => ({
+        ...a,
+        status: a.status || 'pendiente',
+      }));
+      renderAppointmentsAdmin();
+    })
+    .catch(err => {
+      console.error("Error cargando turnos del backend", err);
+      appointments = [];
+      renderAppointmentsAdmin();
+    });
+}
 
 function openAdminModal(title, message) {
   adminModalTitle.textContent = title;
@@ -212,7 +225,8 @@ function initLogin() {
     }
     loginSection.classList.add('hidden');
     adminSection.classList.remove('hidden');
-    renderAppointmentsAdmin();
+    // 🔄 Ahora, cuando entra el admin, cargamos turnos desde el backend
+    loadAppointmentsFromBackend();
   });
 }
 
@@ -327,7 +341,9 @@ function initActions() {
 document.addEventListener('DOMContentLoaded', () => {
   renderStylistsAdmin();
   renderServicesAdmin();
-  renderAppointmentsAdmin();
+  // 👇 ya no llamamos a renderAppointmentsAdmin aquí,
+  // porque ahora se hace después de login con los datos del backend:
+  // renderAppointmentsAdmin();
   initLogin();
   initStylistsAdmin();
   initServicesAdmin();

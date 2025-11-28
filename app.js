@@ -3,7 +3,12 @@ const LS_STYLISTS_KEY = 'dandelo_stylists';
 const LS_APPOINTMENTS_KEY = 'dandelo_appointments';
 
 const defaultStylists = [{ id: 1, name: 'Danilo Dandelo' }];
-const defaultServices = [{"id": 1, "name": "Corte Caballero", "duration": 45, "price": 15000}, {"id": 2, "name": "Corte Dama", "duration": 60, "price": 20000}, {"id": 3, "name": "Tinte Completo", "duration": 90, "price": 40000}, {"id": 4, "name": "Barba & Perfilado", "duration": 30, "price": 12000}];
+const defaultServices = [
+  { id: 1, name: 'Corte Caballero', duration: 45, price: 15000 },
+  { id: 2, name: 'Corte Dama', duration: 60, price: 20000 },
+  { id: 3, name: 'Tinte Completo', duration: 90, price: 40000 },
+  { id: 4, name: 'Barba & Perfilado', duration: 30, price: 12000 }
+];
 const defaultTimeSlots = ['09:00', '10:30', '12:00', '14:00', '15:30', '17:00'];
 
 function getData(key, fallback) {
@@ -193,10 +198,10 @@ function renderTimeSlots() {
   timeSlotsEl.innerHTML = '';
   if (!selectedDate) {
     const msg = document.createElement('p');
-    msg.className = 'text-[11px] text-neutral-500';
-    msg.textContent = 'Elegí primero una fecha.';
-    timeSlotsEl.appendChild(msg);
-    return;
+      msg.className = 'text-[11px] text-neutral-500';
+      msg.textContent = 'Elegí primero una fecha.';
+      timeSlotsEl.appendChild(msg);
+      return;
   }
   defaultTimeSlots.forEach(time => {
     const isSelected = selectedTime === time;
@@ -308,16 +313,33 @@ function onConfirmAppointment() {
     status: 'pendiente',
   };
 
-  appointments.push(appointment);
-  setData(LS_APPOINTMENTS_KEY, appointments);
+  // 🔁 Antes: guardaba en LocalStorage
+  // appointments.push(appointment);
+  // setData(LS_APPOINTMENTS_KEY, appointments);
+  // openGenericModal(...)
 
-  openGenericModal(
-    'Turno confirmado',
-    'Tu turno fue reservado correctamente. Te esperamos el día seleccionado a las ' + selectedTime + ' hs.'
-  );
-
-  clientNameInput.value = '';
-  clientContactInput.value = '';
+  // ✅ Ahora: guardar turno en el backend
+  fetch("https://web-production-b923d.up.railway.app/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(appointment)
+  })
+    .then(r => r.json())
+    .then(() => {
+      openGenericModal(
+        'Turno confirmado',
+        'Tu turno fue reservado correctamente. Te esperamos el día seleccionado a las ' + selectedTime + ' hs.'
+      );
+      // limpiar campos solo si se guardó bien
+      clientNameInput.value = '';
+      clientContactInput.value = '';
+    })
+    .catch(err => {
+      console.error(err);
+      openGenericModal('Error', 'No se pudo guardar el turno. Intentalo más tarde.');
+    });
 }
 
 function initSteps() {
