@@ -3,6 +3,9 @@ const LS_STYLISTS_KEY = 'dandelo_stylists';
 const LS_APPOINTMENTS_KEY = 'dandelo_appointments';
 const ADMIN_PASSWORD_DEFAULT = 'dandelo123';
 
+// 👉 URL del backend en Railway
+const API_BASE = "https://web-production-b923d.up.railway.app";
+
 const loginSection = document.getElementById('loginSection');
 const adminSection = document.getElementById('adminSection');
 const adminPasswordInput = document.getElementById('adminPassword');
@@ -24,8 +27,6 @@ const adminModal = document.getElementById('adminModal');
 const adminModalTitle = document.getElementById('adminModalTitle');
 const adminModalMessage = document.getElementById('adminModalMessage');
 const adminModalCloseBtn = document.getElementById('adminModalCloseBtn');
-const API_BASE = "https://web-production-b923d.up.railway.app";
-
 
 const defaultStylists = [
   { id: 1, name: 'Danilo Dandelo' }
@@ -61,7 +62,7 @@ let stylists = getData(LS_STYLISTS_KEY, defaultStylists);
 let services = getData(LS_SERVICES_KEY, defaultServices);
 let appointments = [];
 
-// 🔄 Cargar turnos desde el backend
+// 🔄 Cargar turnos desde el backend (AHORA SÍ /api/appointments)
 function loadAppointmentsFromBackend() {
   fetch(`${API_BASE}/api/appointments`)
     .then(r => {
@@ -81,7 +82,6 @@ function loadAppointmentsFromBackend() {
       renderAppointmentsAdmin();
     });
 }
-
 
 function openAdminModal(title, message) {
   adminModalTitle.textContent = title;
@@ -231,7 +231,7 @@ function initLogin() {
     }
     loginSection.classList.add('hidden');
     adminSection.classList.remove('hidden');
-    // 🔄 Ahora, cuando entra el admin, cargamos turnos desde el backend
+    // 🔄 Al loguearse, cargamos turnos desde el backend
     loadAppointmentsFromBackend();
   });
 }
@@ -347,9 +347,6 @@ function initActions() {
 document.addEventListener('DOMContentLoaded', () => {
   renderStylistsAdmin();
   renderServicesAdmin();
-  // 👇 ya no llamamos a renderAppointmentsAdmin aquí,
-  // porque ahora se hace después de login con los datos del backend:
-  // renderAppointmentsAdmin();
   initLogin();
   initStylistsAdmin();
   initServicesAdmin();

@@ -2,6 +2,9 @@ const LS_SERVICES_KEY = 'dandelo_services';
 const LS_STYLISTS_KEY = 'dandelo_stylists';
 const LS_APPOINTMENTS_KEY = 'dandelo_appointments';
 
+// 👉 URL del backend en Railway
+const API_BASE = "https://web-production-b923d.up.railway.app";
+
 const defaultStylists = [{ id: 1, name: 'Danilo Dandelo' }];
 const defaultServices = [
   { id: 1, name: 'Corte Caballero', duration: 45, price: 15000 },
@@ -10,7 +13,6 @@ const defaultServices = [
   { id: 4, name: 'Barba & Perfilado', duration: 30, price: 12000 }
 ];
 const defaultTimeSlots = ['09:00', '10:30', '12:00', '14:00', '15:30', '17:00'];
-const API_BASE = "https://web-production-b923d.up.railway.app"; // arriba del archivo, igual que en admin
 
 function getData(key, fallback) {
   try {
@@ -99,7 +101,7 @@ function renderServices() {
         <div class="font-medium text-sm">${service.name}</div>
         <div class="text-[11px] text-neutral-400">${service.duration} min</div>
       </div>
-      <div class="text-xs font-semibold text-amber-300">$${service.price.toLocaleString('es-AR')} </div>
+      <div class="text-xs font-semibold text-amber-300">$${service.price.toLocaleString('es-AR')}</div>
     `;
     div.addEventListener('click', () => {
       selectedServiceId = service.id;
@@ -165,7 +167,7 @@ function renderCalendar() {
   }
 
   const today = new Date();
-  today.setHours(0,0,0,0);
+  today.setHours(0, 0, 0, 0);
 
   days.forEach(date => {
     const btn = document.createElement('button');
@@ -199,10 +201,10 @@ function renderTimeSlots() {
   timeSlotsEl.innerHTML = '';
   if (!selectedDate) {
     const msg = document.createElement('p');
-      msg.className = 'text-[11px] text-neutral-500';
-      msg.textContent = 'Elegí primero una fecha.';
-      timeSlotsEl.appendChild(msg);
-      return;
+    msg.className = 'text-[11px] text-neutral-500';
+    msg.textContent = 'Elegí primero una fecha.';
+    timeSlotsEl.appendChild(msg);
+    return;
   }
   defaultTimeSlots.forEach(time => {
     const isSelected = selectedTime === time;
@@ -245,7 +247,7 @@ function renderSummary() {
     <div><span class="text-neutral-400">Estilista:</span> ${stylist.name}</div>
     <div><span class="text-neutral-400">Fecha:</span> ${dateStr}</div>
     <div><span class="text-neutral-400">Hora:</span> ${selectedTime} hs</div>
-    <div><span class="text-neutral-400">Precio estimado:</span> <span class="text-amber-300 font-semibold">$${service.price.toLocaleString('es-AR')} </span></div>
+    <div><span class="text-neutral-400">Precio estimado:</span> <span class="text-amber-300 font-semibold">$${service.price.toLocaleString('es-AR')}</span></div>
   `;
 }
 
@@ -314,29 +316,23 @@ function onConfirmAppointment() {
     status: 'pendiente',
   };
 
-  // 🔁 Antes: guardaba en LocalStorage
-  // appointments.push(appointment);
-  // setData(LS_APPOINTMENTS_KEY, appointments);
-  // openGenericModal(...)
-
-
-// ...
-
-fetch(`${API_BASE}/api/appointments`, {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify(appointment)
-})
-
-    .then(r => r.json())
+  // ✅ Guardar turno en el backend correcto
+  fetch(`${API_BASE}/api/appointments`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(appointment)
+  })
+    .then(r => {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    })
     .then(() => {
       openGenericModal(
         'Turno confirmado',
         'Tu turno fue reservado correctamente. Te esperamos el día seleccionado a las ' + selectedTime + ' hs.'
       );
-      // limpiar campos solo si se guardó bien
       clientNameInput.value = '';
       clientContactInput.value = '';
     })
