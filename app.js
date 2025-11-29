@@ -33,9 +33,36 @@ function setData(key, value) {
   }
 }
 
-let services = getData(LS_SERVICES_KEY, defaultServices);
-let stylists = getData(LS_STYLISTS_KEY, defaultStylists);
+// 👇 AHORA se inicializan vacíos, se llenan desde el backend
+let services = [];
+let stylists = [];
 let appointments = getData(LS_APPOINTMENTS_KEY, []);
+
+// ================== NUEVA FUNCIÓN: CARGAR SERVICIOS/ESTILISTAS DESDE BACKEND ==================
+
+function loadServicesAndStylists() {
+  return Promise.all([
+    fetch(`${API_BASE}/api/services`).then(r => r.json()),
+    fetch(`${API_BASE}/api/stylists`).then(r => r.json())
+  ])
+    .then(([srv, sty]) => {
+      services = srv && srv.length ? srv : defaultServices;
+      stylists = sty && sty.length ? sty : defaultStylists;
+      setData(LS_SERVICES_KEY, services);  // opcional: cache offline
+      setData(LS_STYLISTS_KEY, stylists);
+      renderServices();
+      renderStylists();
+      validateStep1();
+    })
+    .catch(err => {
+      console.error("Error cargando servicios/estilistas del backend", err);
+      services = getData(LS_SERVICES_KEY, defaultServices);
+      stylists = getData(LS_STYLISTS_KEY, defaultStylists);
+      renderServices();
+      renderStylists();
+      validateStep1();
+    });
+}
 
 const servicesListEl = document.getElementById('servicesList');
 const stylistSelectEl = document.getElementById('stylistSelect');
@@ -486,14 +513,19 @@ function initSteps() {
   confirmAppointmentBtn.addEventListener('click', onConfirmAppointment);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  initSteps();
-  initModals();
+// =================== INICIO DOM ===================
 
-  if (clientLookupBtn && clientLookupContactInput) {
-    clientLookupBtn.addEventListener('click', () => {
-      const contact = clientLookupContactInput.value || '';
-      loadClientAppointmentsByContact(contact);
-    });
-  }
+document.addEventListener('DOMContentLoaded', () => {
+  // 👇 Primero traemos servicios/estilistas del backend
+  loadServicesAndStylists().then(() => {
+    initSteps();
+    initModals();
+
+    if (clientLookupBtn && clientLookupContactInput) {
+      clientLookupBtn.addEventListener('click', () => {
+        const contact = clientLookupContactInput.value || '';
+        loadClientAppointmentsByContact(contact);
+      });
+    }
+  });
 });

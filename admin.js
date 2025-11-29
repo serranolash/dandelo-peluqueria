@@ -71,6 +71,39 @@ let stylists = getData(LS_STYLISTS_KEY, defaultStylists);
 let services = getData(LS_SERVICES_KEY, defaultServices);
 let appointments = [];
 
+// ================== NUEVAS FUNCIONES: CARGAR DESDE BACKEND ==================
+
+function loadServicesFromBackend() {
+  return fetch(`${API_BASE}/api/services`)
+    .then(r => r.json())
+    .then(data => {
+      services = data;
+      setData(LS_SERVICES_KEY, services); // caché local opcional
+      renderServicesAdmin();
+    })
+    .catch(err => {
+      console.error("Error cargando servicios del backend", err);
+      // usamos lo que haya en localStorage o defaults
+      services = getData(LS_SERVICES_KEY, defaultServices);
+      renderServicesAdmin();
+    });
+}
+
+function loadStylistsFromBackend() {
+  return fetch(`${API_BASE}/api/stylists`)
+    .then(r => r.json())
+    .then(data => {
+      stylists = data;
+      setData(LS_STYLISTS_KEY, stylists);
+      renderStylistsAdmin();
+    })
+    .catch(err => {
+      console.error("Error cargando estilistas del backend", err);
+      stylists = getData(LS_STYLISTS_KEY, defaultStylists);
+      renderStylistsAdmin();
+    });
+}
+
 // 🔄 Cargar turnos desde el backend
 function loadAppointmentsFromBackend() {
   fetch(`${API_BASE}/api/appointments`)
@@ -229,6 +262,8 @@ function renderAppointmentsAdmin() {
   }
 }
 
+// ================ LOGIN ADMIN (AJUSTADO PARA CARGAR DESDE BACKEND) ================
+
 function initLogin() {
   loginBtn.addEventListener('click', () => {
     const pwd = adminPasswordInput.value.trim();
@@ -240,10 +275,16 @@ function initLogin() {
       openAdminModal('Acceso denegado', 'La contraseña ingresada no es correcta.');
       return;
     }
+
     loginSection.classList.add('hidden');
     adminSection.classList.remove('hidden');
-    // al loguear, traemos turnos desde backend
-    loadAppointmentsFromBackend();
+
+    // Carga inicial desde backend
+    Promise.all([
+      loadServicesFromBackend(),
+      loadStylistsFromBackend(),
+      loadAppointmentsFromBackend()
+    ]).catch(() => {});
   });
 }
 
@@ -390,11 +431,37 @@ function initCleanup() {
 }
 
 function initActions() {
+  // 🔹 Guardar cambios en backend (SERVICIOS + ESTILISTAS)
   saveAdminChangesBtn.addEventListener('click', () => {
-    setData(LS_STYLISTS_KEY, stylists);
-    setData(LS_SERVICES_KEY, services);
-    setData(LS_APPOINTMENTS_KEY, appointments);
-    openAdminModal('Cambios guardados', 'Los datos se guardaron correctamente en este dispositivo.');
+    // primero guardamos en backend
+    Promise.all([
+      fetch(`${API_BASE}/api/services`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(services),
+      }),
+      fetch(`${API_BASE}/api/stylists`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(stylists),
+      })
+    ])
+      .then(() => {
+        // opcional: cache local
+        setData(LS_STYLISTS_KEY, stylists);
+        setData(LS_SERVICES_KEY, services);
+        openAdminModal(
+          'Cambios guardados',
+          'Los datos se guardaron en el servidor y se verán igual en todos los dispositivos.'
+        );
+      })
+      .catch(err => {
+        console.error(err);
+        openAdminModal(
+          'Error',
+          'No se pudieron guardar los cambios en el servidor. Probá más tarde.'
+        );
+      });
   });
 
   resetDataBtn.addEventListener('click', () => {
@@ -522,6 +589,7 @@ function initStatsUI() {
       const month = Number(monthStr) - 1;
 
       const rows = [['fecha', 'hora', 'servicio', 'precio', 'estado']];
+
       appointments.forEach(appt => {
         const d = new Date(appt.dateISO || appt.date);
         if (isNaN(d) || d.getFullYear() !== year || d.getMonth() !== month) return;
