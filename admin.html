@@ -17,6 +17,9 @@
   <!-- Tailwind via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
 
+  <!-- Chart.js para la gráfica de estadísticas -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <link rel="stylesheet" href="style.css" />
 </head>
 <body class="app-body min-h-screen flex flex-col">
@@ -104,16 +107,62 @@
                 Vista rápida para hoy y próximos días
               </span>
             </h3>
+          </div>
+
+          <!-- Filtros, limpieza y estadísticas -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+            <!-- Filtro solo pendientes -->
             <div class="flex items-center gap-2 text-[11px]">
-              <label class="inline-flex items-center gap-1 text-neutral-300">
-                <input id="filterOnlyPending" type="checkbox" class="w-3 h-3 rounded border-neutral-600 bg-neutral-950">
-                Solo pendientes
+              <label class="inline-flex items-center gap-1">
+                <input id="filterOnlyPending" type="checkbox"
+                       class="rounded border-neutral-600 bg-neutral-900">
+                <span class="text-neutral-300">Mostrar solo pendientes</span>
               </label>
+            </div>
+
+            <!-- Limpieza de turnos viejos -->
+            <div class="flex flex-wrap items-center gap-2 text-[11px]">
+              <label for="cleanupBefore" class="text-neutral-400">
+                Eliminar turnos anteriores a:
+              </label>
+              <input id="cleanupBefore" type="date"
+                     class="bg-neutral-950 border border-neutral-700 rounded-md px-2 py-1 text-[11px]">
+              <button id="cleanupBtn"
+                      class="px-3 py-1 rounded-lg border border-red-500/60 text-red-300 hover:bg-red-500/10">
+                Limpiar
+              </button>
             </div>
           </div>
 
-          <div id="appointmentsList" class="space-y-2 text-[11px] max-h-80 overflow-y-auto pr-1">
-          </div>
+          <!-- Lista de turnos -->
+          <div id="appointmentsList" class="space-y-2 text-xs"></div>
+
+          <hr class="my-4 border-neutral-800/80">
+
+          <!-- BLOQUE DE ESTADÍSTICAS MENSUALES -->
+          <section class="mt-1">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+              <h3 class="text-sm font-semibold">Resumen mensual</h3>
+              <input id="statsMonth" type="month"
+                     class="bg-neutral-950 border border-neutral-700 rounded-md px-2 py-1 text-[11px]" />
+            </div>
+
+            <div id="statsSummary"
+                 class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[11px] text-neutral-300 mb-3">
+              <!-- Se llena desde JS -->
+            </div>
+
+            <div class="bg-neutral-950/70 border border-neutral-800 rounded-2xl p-3">
+              <canvas id="statsChart" height="140"></canvas>
+            </div>
+
+            <div class="mt-3 flex justify-end">
+              <button id="exportStatsCsv"
+                      class="text-[11px] px-3 py-1.5 rounded-lg border border-amber-400/60 text-amber-200 hover:bg-amber-400/10">
+                Exportar CSV del mes
+              </button>
+            </div>
+          </section>
 
           <p class="mt-2 text-[11px] text-neutral-500">
             Sugerencia: si tenés una emergencia, marcá los turnos como <span class="text-red-300">Cancelado</span> y avisá al cliente por WhatsApp usando el número que figura en la tarjeta.

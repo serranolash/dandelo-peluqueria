@@ -20,6 +20,15 @@ const addServiceBtn = document.getElementById('addServiceBtn');
 const appointmentsListEl = document.getElementById('appointmentsList');
 const filterOnlyPendingCheckbox = document.getElementById('filterOnlyPending');
 
+// Limpieza de turnos y estadísticas
+const cleanupBeforeInput = document.getElementById('cleanupBefore');
+const cleanupBtn = document.getElementById('cleanupBtn');
+
+const statsMonthInput = document.getElementById('statsMonth');
+const statsSummaryEl = document.getElementById('statsSummary');
+const exportStatsCsvBtn = document.getElementById('exportStatsCsv');
+let statsChart = null; // instancia de Chart.js
+
 const saveAdminChangesBtn = document.getElementById('saveAdminChangesBtn');
 const resetDataBtn = document.getElementById('resetDataBtn');
 
@@ -75,11 +84,13 @@ function loadAppointmentsFromBackend() {
         status: a.status || 'pendiente',
       }));
       renderAppointmentsAdmin();
+      updateStatsFromUI();   // 👈 recalcula el resumen
     })
     .catch(err => {
       console.error("Error cargando turnos del backend", err);
       appointments = [];
       renderAppointmentsAdmin();
+      updateStatsFromUI();
     });
 }
 
@@ -299,6 +310,7 @@ function initAppointmentsAdmin() {
   if (filterOnlyPendingCheckbox) {
     filterOnlyPendingCheckbox.addEventListener('change', () => {
       renderAppointmentsAdmin();
+      updateStatsFromUI();
     });
   }
 
@@ -335,10 +347,44 @@ function initAppointmentsAdmin() {
         }
         setData(LS_APPOINTMENTS_KEY, appointments);
         renderAppointmentsAdmin();
+        updateStatsFromUI();
       })
       .catch(err => {
         console.error('Error actualizando estado de turno', err);
         openAdminModal('Error', 'No se pudo actualizar el estado del turno en el servidor.');
+      });
+  });
+}
+
+// Limpieza de turnos viejos llamando al backend
+function initCleanup() {
+  if (!cleanupBtn) return;
+
+  cleanupBtn.addEventListener('click', () => {
+    const value = cleanupBeforeInput.value;
+    if (!value) {
+      openAdminModal('Fecha requerida', 'Elegí una fecha para eliminar turnos anteriores.');
+      return;
+    }
+
+    fetch(`${API_BASE}/api/appointments/cleanup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ before: value })
+    })
+      .then(r => r.json())
+      .then(res => {
+        const removed = res.removed ?? 0;
+        const kept = res.kept ?? 0;
+        openAdminModal(
+          'Limpieza realizada',
+          `Se eliminaron ${removed} turnos. Quedan ${kept} turnos en total.`
+        );
+        loadAppointmentsFromBackend();
+      })
+      .catch(err => {
+        console.error(err);
+        openAdminModal('Error', 'No se pudo limpiar los turnos. Probá más tarde.');
       });
   });
 }
@@ -367,6 +413,146 @@ function initActions() {
   adminModalCloseBtn.addEventListener('click', closeAdminModal);
 }
 
+// =================== ESTADÍSTICAS MENSUALES ===================
+
+function computeMonthlyStats(year, month) {
+  const result = {
+    confirmedCount: 0,
+    confirmedAmount: 0,
+    canceledCount: 0,
+    canceledAmount: 0,
+    pendingCount: 0,
+  };
+
+  appointments.forEach(appt => {
+    const dateStr = appt.dateISO || appt.date;
+    if (!dateStr) return;
+    const d = new Date(dateStr);
+    if (isNaN(d)) return;
+    if (d.getFullYear() !== year || d.getMonth() !== month) return;
+
+    const price = Number(appt.price) || 0;
+
+    switch (appt.status) {
+      case 'confirmado':
+        result.confirmedCount++;
+        result.confirmedAmount += price;
+        break;
+      case 'cancelado':
+        result.canceledCount++;
+        result.canceledAmount += price;
+        break;
+      default:
+        result.pendingCount++;
+    }
+  });
+
+  return result;
+}
+
+function updateStatsFromUI() {
+  if (!statsMonthInput) return;
+
+  // Si no hay valor, usar el mes actual
+  const value = statsMonthInput.value || new Date().toISOString().slice(0, 7);
+  statsMonthInput.value = value;
+  const [yearStr, monthStr] = value.split('-');
+  const year = Number(yearStr);
+  const month = Number(monthStr) - 1; // 0-based
+
+  const stats = computeMonthlyStats(year, month);
+
+  if (statsSummaryEl) {
+    statsSummaryEl.innerHTML = `
+      <div class="border border-neutral-800 rounded-xl p-2 bg-neutral-950/80">
+        <div class="text-neutral-400">Turnos confirmados (realizados)</div>
+        <div class="text-sm font-semibold text-emerald-300">${stats.confirmedCount}</div>
+        <div class="text-[11px] text-neutral-400">
+          Ingresos: $${stats.confirmedAmount.toLocaleString('es-AR')}
+        </div>
+      </div>
+      <div class="border border-neutral-800 rounded-xl p-2 bg-neutral-950/80">
+        <div class="text-neutral-400">Turnos cancelados</div>
+        <div class="text-sm font-semibold text-red-300">${stats.canceledCount}</div>
+        <div class="text-[11px] text-neutral-400">
+          Pérdida potencial: $${stats.canceledAmount.toLocaleString('es-AR')}
+        </div>
+      </div>
+      <div class="border border-neutral-800 rounded-xl p-2 bg-neutral-950/80">
+        <div class="text-neutral-400">Turnos pendientes</div>
+        <div class="text-sm font-semibold text-amber-300">${stats.pendingCount}</div>
+        <div class="text-[11px] text-neutral-500">Aún sin resultado</div>
+      </div>
+    `;
+  }
+
+  const ctx = document.getElementById('statsChart');
+  if (ctx && window.Chart) {
+    if (statsChart) statsChart.destroy();
+    statsChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Confirmados', 'Cancelados'],
+        datasets: [
+          {
+            label: 'Monto',
+            data: [stats.confirmedAmount, stats.canceledAmount],
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true } },
+      },
+    });
+  }
+}
+
+function initStatsUI() {
+  if (!statsMonthInput) return;
+
+  statsMonthInput.addEventListener('change', updateStatsFromUI);
+
+  if (exportStatsCsvBtn) {
+    exportStatsCsvBtn.addEventListener('click', () => {
+      const value = statsMonthInput.value || new Date().toISOString().slice(0, 7);
+      const [yearStr, monthStr] = value.split('-');
+      const year = Number(yearStr);
+      const month = Number(monthStr) - 1;
+
+      const rows = [['fecha', 'hora', 'servicio', 'precio', 'estado']];
+      appointments.forEach(appt => {
+        const d = new Date(appt.dateISO || appt.date);
+        if (isNaN(d) || d.getFullYear() !== year || d.getMonth() !== month) return;
+        rows.push([
+          d.toISOString().slice(0, 10),
+          appt.time || '',
+          (appt.serviceName || '').replace(/,/g, ' '),
+          Number(appt.price || 0),
+          appt.status || 'pendiente',
+        ]);
+      });
+
+      const csv = rows.map(r => r.join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `turnos_${value}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  // primera carga
+  updateStatsFromUI();
+}
+
+// =================== INICIO DOM ===================
+
 document.addEventListener('DOMContentLoaded', () => {
   renderStylistsAdmin();
   renderServicesAdmin();
@@ -375,4 +561,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initServicesAdmin();
   initAppointmentsAdmin();
   initActions();
+  initCleanup();   // 👈 nuevo
+  initStatsUI();   // 👈 nuevo
 });
