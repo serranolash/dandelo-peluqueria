@@ -210,6 +210,34 @@
         </div>
       </section>
 
+
+
+            <!-- MIS TURNOS (CLIENTE VE ESTADO) -->
+      <section class="mt-6 text-xs text-neutral-200">
+        <h3 class="text-sm font-semibold mb-2">Tus turnos</h3>
+        <p class="text-[11px] text-neutral-400 mb-2">
+          Ingresá tu WhatsApp o teléfono para ver el estado de tus turnos (pendiente, confirmado o cancelado).
+        </p>
+        <div class="flex flex-col sm:flex-row gap-2 mb-3">
+          <input
+            id="clientLookupContact"
+            type="text"
+            class="flex-1 bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 text-[11px] focus:outline-none focus:ring-1 focus:ring-amber-400/80"
+            placeholder="Ej: +54 9 11..."
+          />
+          <button
+            id="clientLookupBtn"
+            class="px-4 py-2 rounded-xl bg-neutral-900 border border-amber-400/70 text-[11px] text-amber-200 hover:bg-amber-400/10"
+          >
+            Ver mis turnos
+          </button>
+        </div>
+        <div id="clientAppointmentsList" class="space-y-2 text-[11px]">
+          <p class="text-neutral-500">Todavía no se cargaron turnos. Buscá usando tu contacto.</p>
+        </div>
+      </section>
+
+
       <!-- PIE DE PÁGINA / LINK A ADMIN -->
       <section class="mt-5 text-[11px] text-neutral-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <p>📍 Dandelo Peluquería – Turnos online con vibra rock & metal.</p>

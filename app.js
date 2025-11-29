@@ -69,6 +69,10 @@ const genericModalTitle = document.getElementById('genericModalTitle');
 const genericModalMessage = document.getElementById('genericModalMessage');
 const genericModalCloseBtn = document.getElementById('genericModalCloseBtn');
 
+const clientLookupContactInput = document.getElementById('clientLookupContact');
+const clientLookupBtn = document.getElementById('clientLookupBtn');
+const clientAppointmentsListEl = document.getElementById('clientAppointmentsList');
+
 let selectedServiceId = null;
 let selectedStylistId = stylists[0]?.id ?? null;
 let currentMonth = new Date();
@@ -101,7 +105,7 @@ function renderServices() {
         <div class="font-medium text-sm">${service.name}</div>
         <div class="text-[11px] text-neutral-400">${service.duration} min</div>
       </div>
-      <div class="text-xs font-semibold text-amber-300">$${service.price.toLocaleString('es-AR')}</div>
+      <div class="text-xs font-semibold text-amber-300">$${service.price.toLocaleString('es-AR')} </div>
     `;
     div.addEventListener('click', () => {
       selectedServiceId = service.id;
@@ -247,7 +251,7 @@ function renderSummary() {
     <div><span class="text-neutral-400">Estilista:</span> ${stylist.name}</div>
     <div><span class="text-neutral-400">Fecha:</span> ${dateStr}</div>
     <div><span class="text-neutral-400">Hora:</span> ${selectedTime} hs</div>
-    <div><span class="text-neutral-400">Precio estimado:</span> <span class="text-amber-300 font-semibold">$${service.price.toLocaleString('es-AR')}</span></div>
+    <div><span class="text-neutral-400">Precio estimado:</span> <span class="text-amber-300 font-semibold">$${service.price.toLocaleString('es-AR')} </span></div>
   `;
 }
 
@@ -259,6 +263,93 @@ function openGenericModal(title, message) {
 
 function closeGenericModal() {
   genericModal.classList.add('hidden');
+}
+
+function renderClientAppointmentsForContact(contact, appointmentsFromApi) {
+  if (!clientAppointmentsListEl) return;
+
+  clientAppointmentsListEl.innerHTML = '';
+
+  if (!appointmentsFromApi || !appointmentsFromApi.length) {
+    clientAppointmentsListEl.innerHTML =
+      '<p class="text-[11px] text-neutral-500">No encontramos turnos asociados a ese contacto.</p>';
+    return;
+  }
+
+  const sorted = [...appointmentsFromApi].sort((a, b) => {
+    const da = new Date(a.dateISO || a.date);
+    const db = new Date(b.dateISO || b.date);
+    if (da.getTime() === db.getTime()) {
+      return (a.time || '').localeCompare(b.time || '');
+    }
+    return da - db;
+  });
+
+  sorted.forEach(appt => {
+    const dateObj = new Date(appt.dateISO || appt.date);
+    const dateStr = isNaN(dateObj.getTime())
+      ? (appt.dateISO || '')
+      : dateObj.toLocaleDateString('es-AR', {
+          weekday: 'short',
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+        });
+
+    let statusText = 'Pendiente';
+    let statusClass = 'text-amber-300';
+    if (appt.status === 'confirmado') {
+      statusText = 'Confirmado';
+      statusClass = 'text-emerald-300';
+    } else if (appt.status === 'cancelado') {
+      statusText = 'Cancelado';
+      statusClass = 'text-red-300';
+    }
+
+    const card = document.createElement('div');
+    card.className = 'border border-neutral-800 rounded-xl p-3 bg-neutral-950/85 space-y-1';
+    card.innerHTML = `
+      <div class="flex items-center justify-between text-[11px]">
+        <span class="font-semibold text-neutral-100">${appt.serviceName || '-'}</span>
+        <span class="text-neutral-400">${dateStr} • ${(appt.time || '')} hs</span>
+      </div>
+      <div class="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-neutral-300">
+        <span>Estilista: <span class="text-neutral-100">${appt.stylistName || '-'}</span></span>
+        <span>Precio: <span class="text-amber-300">$${(appt.price || 0).toLocaleString('es-AR')}</span></span>
+      </div>
+      <div class="text-[11px]">
+        Estado: <span class="${statusClass} font-semibold">${statusText}</span>
+      </div>
+    `;
+    clientAppointmentsListEl.appendChild(card);
+  });
+}
+
+function loadClientAppointmentsByContact(contact) {
+  if (!clientAppointmentsListEl) return;
+  if (!contact) {
+    clientAppointmentsListEl.innerHTML =
+      '<p class="text-[11px] text-neutral-500">Ingresá un contacto para buscar tus turnos.</p>';
+    return;
+  }
+
+  // Traemos todos los turnos y filtramos por contacto en el front.
+  fetch(`${API_BASE}/api/appointments`)
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(data => {
+      const list = (data || []).filter(a =>
+        (a.clientContact || '').trim().toLowerCase() === contact.trim().toLowerCase()
+      );
+      renderClientAppointmentsForContact(contact, list);
+    })
+    .catch(err => {
+      console.error('Error cargando turnos del cliente', err);
+      clientAppointmentsListEl.innerHTML =
+        '<p class="text-[11px] text-red-300">No se pudieron cargar tus turnos. Probá de nuevo en unos minutos.</p>';
+    });
 }
 
 function initModals() {
@@ -316,7 +407,7 @@ function onConfirmAppointment() {
     status: 'pendiente',
   };
 
-  // ✅ Guardar turno en el backend correcto
+  // Guardar turno en backend
   fetch(`${API_BASE}/api/appointments`, {
     method: "POST",
     headers: {
@@ -325,7 +416,7 @@ function onConfirmAppointment() {
     body: JSON.stringify(appointment)
   })
     .then(r => {
-      if (!r.ok) throw new Error("HTTP " + r.status);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.json();
     })
     .then(() => {
@@ -335,6 +426,11 @@ function onConfirmAppointment() {
       );
       clientNameInput.value = '';
       clientContactInput.value = '';
+
+      // opcional: refrescar listado de "Tus turnos" si ya puso el mismo contacto
+      if (clientLookupContactInput && clientLookupContactInput.value.trim()) {
+        loadClientAppointmentsByContact(clientLookupContactInput.value.trim());
+      }
     })
     .catch(err => {
       console.error(err);
@@ -393,4 +489,11 @@ function initSteps() {
 document.addEventListener('DOMContentLoaded', () => {
   initSteps();
   initModals();
+
+  if (clientLookupBtn && clientLookupContactInput) {
+    clientLookupBtn.addEventListener('click', () => {
+      const contact = clientLookupContactInput.value || '';
+      loadClientAppointmentsByContact(contact);
+    });
+  }
 });

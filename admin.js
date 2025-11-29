@@ -62,7 +62,7 @@ let stylists = getData(LS_STYLISTS_KEY, defaultStylists);
 let services = getData(LS_SERVICES_KEY, defaultServices);
 let appointments = [];
 
-// 🔄 Cargar turnos desde el backend (AHORA SÍ /api/appointments)
+// 🔄 Cargar turnos desde el backend
 function loadAppointmentsFromBackend() {
   fetch(`${API_BASE}/api/appointments`)
     .then(r => {
@@ -231,7 +231,7 @@ function initLogin() {
     }
     loginSection.classList.add('hidden');
     adminSection.classList.remove('hidden');
-    // 🔄 Al loguearse, cargamos turnos desde el backend
+    // al loguear, traemos turnos desde backend
     loadAppointmentsFromBackend();
   });
 }
@@ -315,8 +315,31 @@ function initAppointmentsAdmin() {
     } else if (action === 'cancel') {
       appt.status = 'cancelado';
     }
-    setData(LS_APPOINTMENTS_KEY, appointments);
-    renderAppointmentsAdmin();
+
+    // Persistimos el cambio de estado en el backend
+    fetch(`${API_BASE}/api/appointments/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ status: appt.status })
+    })
+      .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(updated => {
+        const idx = appointments.findIndex(a => a.id === id);
+        if (idx !== -1) {
+          appointments[idx] = updated;
+        }
+        setData(LS_APPOINTMENTS_KEY, appointments);
+        renderAppointmentsAdmin();
+      })
+      .catch(err => {
+        console.error('Error actualizando estado de turno', err);
+        openAdminModal('Error', 'No se pudo actualizar el estado del turno en el servidor.');
+      });
   });
 }
 
