@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dandelo-pwa-v4';
+const CACHE_NAME = 'dandelo-pwa-v5';
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
@@ -14,7 +14,6 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(URLS_TO_CACHE))
   );
-  // Tomar control inmediato sin esperar al SW anterior
   self.skipWaiting();
 });
 
@@ -28,19 +27,22 @@ self.addEventListener('activate', (event) => {
       )
     )
   );
-  // Reclamar inmediatamente los clientes abiertos
   self.clients.claim();
 });
 
-// Estrategia:
-// - Navegación (SPA / HTML): network-first
-// - Assets (CSS, JS, imágenes): cache-first con actualización en segundo plano
 self.addEventListener('fetch', (event) => {
   const req = event.request;
 
   if (req.method !== 'GET') return;
 
-  // Navegación (index, admin, refrescos de página)
+  const url = new URL(req.url);
+
+  // ❗ No cachear API: siempre a la red
+  if (url.pathname.startsWith('/api/')) {
+    return; // dejamos que el navegador vaya directo al backend
+  }
+
+  // Navegación (index, admin, refrescos) → network-first
   if (req.mode === 'navigate') {
     event.respondWith(
       fetch(req)
@@ -56,7 +58,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Resto: CSS, JS, imágenes, etc.
+  // Resto (CSS, JS, imágenes estáticas) → cache-first con actualización en segundo plano
   event.respondWith(
     caches.match(req).then((cached) => {
       const fetchPromise = fetch(req)
@@ -67,7 +69,7 @@ self.addEventListener('fetch', (event) => {
           }
           return res;
         })
-        .catch(() => cached); // si falla la red, devolvemos caché si existe
+        .catch(() => cached);
       return cached || fetchPromise;
     })
   );
