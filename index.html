@@ -210,9 +210,7 @@
         </div>
       </section>
 
-
-
-            <!-- MIS TURNOS (CLIENTE VE ESTADO) -->
+      <!-- MIS TURNOS (CLIENTE VE ESTADO) -->
       <section class="mt-6 text-xs text-neutral-200">
         <h3 class="text-sm font-semibold mb-2">Tus turnos</h3>
         <p class="text-[11px] text-neutral-400 mb-2">
@@ -237,6 +235,22 @@
         </div>
       </section>
 
+      <!-- GALERÍA DE TRABAJOS RECIENTES -->
+      <section class="mt-8">
+        <div class="mb-3 flex items-center justify-between gap-2">
+          <h2 class="text-sm font-semibold text-neutral-100">
+            Galería de trabajos recientes
+          </h2>
+          <p class="text-[11px] text-neutral-400">
+            Algunos cortes y estilos realizados en el estudio.
+          </p>
+        </div>
+
+        <!-- Contenedor donde app.js renderiza las tarjetas de la galería -->
+        <div id="galleryGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+          <!-- Se completa dinámicamente desde app.js (renderGalleryClient) -->
+        </div>
+      </section>
 
       <!-- PIE DE PÁGINA / LINK A ADMIN -->
       <section class="mt-5 text-[11px] text-neutral-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
