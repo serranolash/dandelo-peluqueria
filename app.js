@@ -38,8 +38,6 @@ let services = [];
 let stylists = [];
 let appointments = getData(LS_APPOINTMENTS_KEY, []);
 
-// ================== NUEVA FUNCIÓN: CARGAR SERVICIOS/ESTILISTAS DESDE BACKEND ==================
-
 function loadServicesAndStylists() {
   return Promise.all([
     fetch(`${API_BASE}/api/services`).then(r => r.json()),
@@ -126,7 +124,7 @@ function renderServices() {
       'w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-left text-xs ' +
       (isSelected
         ? 'border-amber-400 bg-amber-400/10 text-amber-100'
-        : 'border-neutral-700 hover:border-amber-400/70 hover:bg-neutral-900 text-neutral-200');
+        : 'border-neutral-700 hover-border-amber-400/70 hover:bg-neutral-900 text-neutral-200');
     div.innerHTML = `
       <div>
         <div class="font-medium text-sm">${service.name}</div>
@@ -218,9 +216,13 @@ function renderCalendar() {
     if (!isPast) {
       btn.addEventListener('click', () => {
         selectedDate = date;
-        renderCalendar();
-        renderTimeSlots();
-        validateStep2();
+
+        // 👇 Cargamos los turnos de ese día antes de pintar los horarios
+        loadAppointmentsForSelectedDate().then(() => {
+          renderCalendar();
+          renderTimeSlots();
+          validateStep2();
+        });
       });
     }
 
@@ -237,21 +239,38 @@ function renderTimeSlots() {
     timeSlotsEl.appendChild(msg);
     return;
   }
+
   defaultTimeSlots.forEach(time => {
+    // contamos cuántos turnos hay para esta hora (no cancelados)
+    const countAtTime = appointments.filter(a =>
+      (a.time || '') === time && a.status !== 'cancelado'
+    ).length;
+
+    const isFull = countAtTime >= 2;
     const isSelected = selectedTime === time;
+
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.textContent = time;
+    btn.textContent = isFull ? `${time} (lleno)` : time;
+
     btn.className =
       'px-3 py-1.5 rounded-full border text-[11px] ' +
-      (isSelected
-        ? 'border-amber-400 bg-amber-400/10 text-amber-100'
-        : 'border-neutral-700 text-neutral-200 hover:border-amber-400/70 hover:bg-neutral-900');
-    btn.addEventListener('click', () => {
-      selectedTime = time;
-      renderTimeSlots();
-      validateStep2();
-    });
+      (isFull
+        ? 'border-neutral-700 text-neutral-500 bg-neutral-900/60 cursor-not-allowed'
+        : isSelected
+          ? 'border-amber-400 bg-amber-400/10 text-amber-100'
+          : 'border-neutral-700 text-neutral-200 hover:border-amber-400/70 hover:bg-neutral-900');
+
+    if (!isFull) {
+      btn.addEventListener('click', () => {
+        selectedTime = time;
+        renderTimeSlots();
+        validateStep2();
+      });
+    } else {
+      btn.disabled = true;
+    }
+
     timeSlotsEl.appendChild(btn);
   });
 }
@@ -379,6 +398,34 @@ function loadClientAppointmentsByContact(contact) {
     });
 }
 
+function loadAppointmentsForSelectedDate() {
+  if (!selectedDate) {
+    appointments = [];
+    return Promise.resolve();
+  }
+
+  const dayStr = selectedDate.toISOString().slice(0, 10); // YYYY-MM-DD
+
+  return fetch(`${API_BASE}/api/appointments`)
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(data => {
+      // Guardamos SOLO los turnos de ese día y que no estén cancelados
+      appointments = (data || []).filter(a => {
+        const d = new Date(a.dateISO || a.date);
+        if (isNaN(d)) return false;
+        const dStr = d.toISOString().slice(0, 10);
+        return dStr === dayStr && a.status !== 'cancelado';
+      });
+    })
+    .catch(err => {
+      console.error('Error cargando turnos del día', err);
+      appointments = [];
+    });
+}
+
 function initModals() {
   if (openPaymentsBtn) {
     openPaymentsBtn.addEventListener('click', () => {
@@ -442,8 +489,20 @@ function onConfirmAppointment() {
     },
     body: JSON.stringify(appointment)
   })
-    .then(r => {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
+    .then(async r => {
+      if (!r.ok) {
+        let body = null;
+        try {
+          body = await r.json();
+        } catch (_) {}
+
+        // si viene del backend con código de horario lleno
+        if (r.status === 409 && body && body.code === 'TIME_SLOT_FULL') {
+          throw { type: 'slot_full', message: body.error || 'La hora seleccionada ya está completa.' };
+        }
+
+        throw new Error('HTTP ' + r.status);
+      }
       return r.json();
     })
     .then(() => {
@@ -460,6 +519,10 @@ function onConfirmAppointment() {
       }
     })
     .catch(err => {
+      if (err && err.type === 'slot_full') {
+        openGenericModal('Horario no disponible', err.message);
+        return;
+      }
       console.error(err);
       openGenericModal('Error', 'No se pudo guardar el turno. Intentalo más tarde.');
     });
