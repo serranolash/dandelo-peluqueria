@@ -37,13 +37,11 @@ const adminModalTitle = document.getElementById('adminModalTitle');
 const adminModalMessage = document.getElementById('adminModalMessage');
 const adminModalCloseBtn = document.getElementById('adminModalCloseBtn');
 
-// === ELEMENTOS DE GALERÍA (opcionales, se usan si existen en el HTML) ===
-const galleryListEl = document.getElementById('galleryList');
-const galleryUploadInput = document.getElementById('galleryUpload');
-const galleryTitleInput = document.getElementById('galleryTitle');
-const galleryDescInput = document.getElementById('galleryDescription');
-const galleryAddUrlBtn = document.getElementById('galleryAddUrlBtn');
-const galleryImageUrlInput = document.getElementById('galleryImageUrl');
+// Galería (admin)
+const galleryTitleInput  = document.getElementById('galleryTitleInput');
+const galleryImageInput  = document.getElementById('galleryImageInput');
+const galleryAddBtn      = document.getElementById('galleryAddBtn');
+const galleryAdminListEl = document.getElementById('galleryAdminList');
 
 const defaultStylists = [
   { id: 1, name: 'Danilo Dandelo' }
@@ -78,7 +76,7 @@ function setData(key, value) {
 let stylists = getData(LS_STYLISTS_KEY, defaultStylists);
 let services = getData(LS_SERVICES_KEY, defaultServices);
 let appointments = [];
-let galleryItems = []; // 👈 nuevo estado para galería
+let galleryItems = [];
 
 // 🔄 Cargar turnos desde el backend
 function loadAppointmentsFromBackend() {
@@ -108,7 +106,7 @@ function loadServicesFromBackend() {
   return fetch(`${API_BASE}/api/services`)
     .then(r => r.json())
     .then(data => {
-      services = data || defaultServices;
+      services = data && data.length ? data : defaultServices;
       setData(LS_SERVICES_KEY, services); // caché local opcional
       renderServicesAdmin();
     })
@@ -124,7 +122,7 @@ function loadStylistsFromBackend() {
   return fetch(`${API_BASE}/api/stylists`)
     .then(r => r.json())
     .then(data => {
-      stylists = data || defaultStylists;
+      stylists = data && data.length ? data : defaultStylists;
       setData(LS_STYLISTS_KEY, stylists);
       renderStylistsAdmin();
     })
@@ -132,6 +130,26 @@ function loadStylistsFromBackend() {
       console.error("Error cargando estilistas del backend", err);
       stylists = getData(LS_STYLISTS_KEY, defaultStylists);
       renderStylistsAdmin();
+    });
+}
+
+// 🔄 Cargar galería desde backend (admin)
+function loadGalleryFromBackend() {
+  if (!galleryAdminListEl) return Promise.resolve();
+
+  return fetch(`${API_BASE}/api/gallery`)
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(data => {
+      galleryItems = Array.isArray(data) ? data : [];
+      renderGalleryAdmin();
+    })
+    .catch(err => {
+      console.error('Error cargando galería del backend', err);
+      galleryItems = [];
+      renderGalleryAdmin();
     });
 }
 
@@ -270,6 +288,42 @@ function renderAppointmentsAdmin() {
   }
 }
 
+// Render galería en panel admin
+function renderGalleryAdmin() {
+  if (!galleryAdminListEl) return;
+
+  galleryAdminListEl.innerHTML = '';
+
+  if (!galleryItems.length) {
+    galleryAdminListEl.innerHTML =
+      '<p class="text-[11px] text-neutral-500">Todavía no hay fotos cargadas en la galería.</p>';
+    return;
+  }
+
+  galleryItems.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'border border-neutral-800 rounded-2xl bg-neutral-950/80 overflow-hidden flex flex-col';
+
+    card.innerHTML = `
+      <div class="aspect-[4/3] bg-neutral-900 overflow-hidden">
+        <img
+          src="${item.imageData}"
+          alt="${item.title || 'Trabajo de la galería'}"
+          class="w-full h-full object-cover"
+        />
+      </div>
+      <div class="p-2.5 text-[11px] flex flex-col gap-1">
+        <div class="font-semibold text-neutral-100">${item.title || 'Sin título'}</div>
+        <div class="text-neutral-500">
+          ${item.createdAt ? new Date(item.createdAt).toLocaleString('es-AR') : ''}
+        </div>
+      </div>
+    `;
+
+    galleryAdminListEl.appendChild(card);
+  });
+}
+
 function initLogin() {
   loginBtn.addEventListener('click', () => {
     const pwd = adminPasswordInput.value.trim();
@@ -281,7 +335,6 @@ function initLogin() {
       openAdminModal('Acceso denegado', 'La contraseña ingresada no es correcta.');
       return;
     }
-
     loginSection.classList.add('hidden');
     adminSection.classList.remove('hidden');
 
@@ -290,7 +343,7 @@ function initLogin() {
       loadServicesFromBackend(),
       loadStylistsFromBackend(),
       loadAppointmentsFromBackend(),
-      loadGalleryFromBackend()  // 👈 nueva galería
+      loadGalleryFromBackend()
     ]).catch(() => {});
   });
 }
@@ -399,7 +452,7 @@ function initAppointmentsAdmin() {
       })
       .catch(err => {
         console.error('Error actualizando estado de turno', err);
-        openAdminModal('Error', 'No se pudo actualizar el estado del turno en el servidor.');
+        openAdminModal('Error', 'No se pudo actualizar el estado de turno en el servidor.');
       });
   });
 }
@@ -438,7 +491,7 @@ function initCleanup() {
 }
 
 function initActions() {
-  // Guardar cambios de servicios/estilistas en el backend
+  // guardar cambios de servicios/estilistas en backend
   saveAdminChangesBtn.addEventListener('click', () => {
     Promise.all([
       fetch(`${API_BASE}/api/services`, {
@@ -453,6 +506,7 @@ function initActions() {
       })
     ])
       .then(() => {
+        // opcional: cache local
         setData(LS_STYLISTS_KEY, stylists);
         setData(LS_SERVICES_KEY, services);
         openAdminModal(
@@ -483,6 +537,68 @@ function initActions() {
     if (e.target === adminModal) closeAdminModal();
   });
   adminModalCloseBtn.addEventListener('click', closeAdminModal);
+}
+
+// =================== GALERÍA: INIT ===================
+
+function initGalleryAdmin() {
+  if (!galleryAddBtn || !galleryImageInput) return;
+
+  galleryAddBtn.addEventListener('click', () => {
+    const title = (galleryTitleInput?.value || '').trim();
+    const file = galleryImageInput.files[0];
+
+    if (!file) {
+      openAdminModal('Imagen requerida', 'Elegí una foto para agregar a la galería.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const imageData = reader.result; // data:image/...;base64,...
+
+      const newItem = {
+        id: Date.now(),
+        title: title || 'Trabajo sin título',
+        imageData,
+        createdAt: new Date().toISOString(),
+      };
+
+      fetch(`${API_BASE}/api/gallery`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newItem),
+      })
+        .then(r => {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.json();
+        })
+        .then(saved => {
+          galleryItems.push(saved);
+          renderGalleryAdmin();
+          if (galleryTitleInput) galleryTitleInput.value = '';
+          galleryImageInput.value = '';
+          openAdminModal(
+            'Foto agregada',
+            'El trabajo se agregó a la galería y ya puede verse en la app del cliente.'
+          );
+        })
+        .catch(err => {
+          console.error('Error guardando foto de galería', err);
+          openAdminModal(
+            'Error',
+            'No se pudo guardar la foto en el servidor. Probá de nuevo en unos minutos.'
+          );
+        });
+    };
+
+    reader.onerror = () => {
+      console.error('Error leyendo archivo de imagen');
+      openAdminModal('Error', 'No se pudo leer la imagen seleccionada.');
+    };
+
+    reader.readAsDataURL(file);
+  });
 }
 
 // =================== ESTADÍSTICAS MENSUALES ===================
@@ -525,12 +641,11 @@ function computeMonthlyStats(year, month) {
 function updateStatsFromUI() {
   if (!statsMonthInput) return;
 
-  // Si no hay valor, usar el mes actual
   const value = statsMonthInput.value || new Date().toISOString().slice(0, 7);
   statsMonthInput.value = value;
   const [yearStr, monthStr] = value.split('-');
   const year = Number(yearStr);
-  const month = Number(monthStr) - 1; // 0-based
+  const month = Number(monthStr) - 1;
 
   const stats = computeMonthlyStats(year, month);
 
@@ -619,187 +734,21 @@ function initStatsUI() {
     });
   }
 
-  // primera carga
   updateStatsFromUI();
-}
-
-// =================== GALERÍA (ADMIN) ===================
-
-function loadGalleryFromBackend() {
-  if (!galleryListEl) {
-    // Si no hay UI de galería, no hacemos nada
-    return Promise.resolve();
-  }
-
-  return fetch(`${API_BASE}/api/gallery`)
-    .then(r => {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json();
-    })
-    .then(data => {
-      galleryItems = data || [];
-      renderGalleryAdmin();
-    })
-    .catch(err => {
-      console.error('Error cargando galería', err);
-      galleryItems = [];
-      renderGalleryAdmin();
-    });
-}
-
-function renderGalleryAdmin() {
-  if (!galleryListEl) return;
-
-  galleryListEl.innerHTML = '';
-  if (!galleryItems.length) {
-    galleryListEl.innerHTML =
-      '<p class="text-[11px] text-neutral-500">Todavía no hay fotos cargadas.</p>';
-    return;
-  }
-
-  galleryItems
-    .slice()
-    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
-    .forEach(item => {
-      const card = document.createElement('div');
-      card.className =
-        'border border-neutral-800 rounded-xl p-2 bg-neutral-950/80 flex flex-col gap-2';
-
-      card.innerHTML = `
-        <div class="w-full h-32 rounded-lg overflow-hidden bg-neutral-900 flex items-center justify-center">
-          ${
-            item.imageUrl
-              ? `<img src="${item.imageUrl}" alt="${item.title || ''}" class="w-full h-full object-cover" />`
-              : '<span class="text-[11px] text-neutral-500">Sin imagen</span>'
-          }
-        </div>
-        <div class="space-y-1 text-[11px]">
-          <div class="font-semibold text-neutral-100">${item.title || 'Trabajo sin título'}</div>
-          ${
-            item.description
-              ? `<div class="text-neutral-400">${item.description}</div>`
-              : ''
-          }
-        </div>
-        <div class="flex justify-end">
-          <button data-id="${item.id}" class="text-[11px] px-2 py-1 rounded-lg border border-red-500/60 text-red-300 hover:bg-red-500/10">
-            Eliminar
-          </button>
-        </div>
-      `;
-      galleryListEl.appendChild(card);
-    });
-}
-
-function initGalleryAdmin() {
-  if (!galleryListEl) return;
-
-  // Eliminar ítems
-  galleryListEl.addEventListener('click', (e) => {
-    const btn = e.target.closest('button[data-id]');
-    if (!btn) return;
-    const id = Number(btn.getAttribute('data-id'));
-    if (!id) return;
-
-    fetch(`${API_BASE}/api/gallery/${id}`, {
-      method: 'DELETE'
-    })
-      .then(r => {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        galleryItems = galleryItems.filter(it => it.id !== id);
-        renderGalleryAdmin();
-      })
-      .catch(err => {
-        console.error('Error eliminando foto de galería', err);
-        openAdminModal('Error', 'No se pudo eliminar la foto. Probá más tarde.');
-      });
-  });
-
-  // Subir archivo
-  if (galleryUploadInput) {
-    galleryUploadInput.addEventListener('change', () => {
-      const file = galleryUploadInput.files[0];
-      if (!file) return;
-
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('title', (galleryTitleInput && galleryTitleInput.value) || '');
-      formData.append('description', (galleryDescInput && galleryDescInput.value) || '');
-
-      fetch(`${API_BASE}/api/gallery/upload`, {
-        method: 'POST',
-        body: formData
-      })
-        .then(r => {
-          if (!r.ok) throw new Error('HTTP ' + r.status);
-          return r.json();
-        })
-        .then(newItem => {
-          galleryItems.push(newItem);
-          renderGalleryAdmin();
-          if (galleryTitleInput) galleryTitleInput.value = '';
-          if (galleryDescInput) galleryDescInput.value = '';
-          galleryUploadInput.value = '';
-        })
-        .catch(err => {
-          console.error('Error subiendo imagen a galería', err);
-          openAdminModal('Error', 'No se pudo subir la imagen. Probá más tarde.');
-        });
-    });
-  }
-
-  // Agregar por URL directa
-  if (galleryAddUrlBtn && galleryImageUrlInput) {
-    galleryAddUrlBtn.addEventListener('click', () => {
-      const url = galleryImageUrlInput.value.trim();
-      if (!url) {
-        openAdminModal('URL requerida', 'Pegá la URL de la imagen antes de agregar.');
-        return;
-      }
-
-      const payload = {
-        imageUrl: url,
-        title: (galleryTitleInput && galleryTitleInput.value) || '',
-        description: (galleryDescInput && galleryDescInput.value) || ''
-      };
-
-      fetch(`${API_BASE}/api/gallery`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
-        .then(r => {
-          if (!r.ok) throw new Error('HTTP ' + r.status);
-          return r.json();
-        })
-        .then(newItem => {
-          galleryItems.push(newItem);
-          renderGalleryAdmin();
-          galleryImageUrlInput.value = '';
-          if (galleryTitleInput) galleryTitleInput.value = '';
-          if (galleryDescInput) galleryDescInput.value = '';
-        })
-        .catch(err => {
-          console.error('Error agregando imagen por URL', err);
-          openAdminModal('Error', 'No se pudo agregar la imagen. Probá más tarde.');
-        });
-    });
-  }
 }
 
 // =================== INICIO DOM ===================
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Render inicial con defaults (se reemplazan al loguear)
   renderStylistsAdmin();
   renderServicesAdmin();
-
+  renderGalleryAdmin();
   initLogin();
   initStylistsAdmin();
   initServicesAdmin();
   initAppointmentsAdmin();
   initActions();
-  initCleanup();   // 👈 nuevo
-  initStatsUI();   // 👈 nuevo
-  initGalleryAdmin(); // 👈 nueva inicialización de galería (segura si no hay HTML)
+  initCleanup();
+  initStatsUI();
+  initGalleryAdmin();   // 👈 nuevo
 });

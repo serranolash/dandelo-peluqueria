@@ -33,11 +33,10 @@ function setData(key, value) {
   }
 }
 
-// Ahora se llenan desde backend
 let services = [];
 let stylists = [];
 let appointments = getData(LS_APPOINTMENTS_KEY, []);
-let galleryItemsClient = []; // 👈 nuevo estado para galería en cliente
+let galleryItems = [];
 
 const servicesListEl = document.getElementById('servicesList');
 const stylistSelectEl = document.getElementById('stylistSelect');
@@ -75,7 +74,7 @@ const clientLookupContactInput = document.getElementById('clientLookupContact');
 const clientLookupBtn = document.getElementById('clientLookupBtn');
 const clientAppointmentsListEl = document.getElementById('clientAppointmentsList');
 
-// 👇 contenedor opcional para galería en el cliente
+// Galería en cliente
 const galleryGridEl = document.getElementById('galleryGrid');
 
 let selectedServiceId = null;
@@ -83,99 +82,6 @@ let selectedStylistId = stylists[0]?.id ?? null;
 let currentMonth = new Date();
 let selectedDate = null;
 let selectedTime = null;
-
-// ========= CARGA DE SERVICIOS/ESTILISTAS DESDE BACKEND =========
-
-function loadServicesAndStylists() {
-  return Promise.all([
-    fetch(`${API_BASE}/api/services`).then(r => r.json()),
-    fetch(`${API_BASE}/api/stylists`).then(r => r.json())
-  ])
-    .then(([srv, sty]) => {
-      services = srv && srv.length ? srv : defaultServices;
-      stylists = sty && sty.length ? sty : defaultStylists;
-      setData(LS_SERVICES_KEY, services);  // opcional: cache offline
-      setData(LS_STYLISTS_KEY, stylists);
-      renderServices();
-      renderStylists();
-      validateStep1();
-    })
-    .catch(err => {
-      console.error("Error cargando servicios/estilistas del backend", err);
-      services = getData(LS_SERVICES_KEY, defaultServices);
-      stylists = getData(LS_STYLISTS_KEY, defaultStylists);
-      renderServices();
-      renderStylists();
-      validateStep1();
-    });
-}
-
-// ========= GALERÍA CLIENTE =========
-
-function loadGalleryForClient() {
-  if (!galleryGridEl) {
-    // si no hay sección de galería en el HTML, no hacemos nada
-    return Promise.resolve();
-  }
-
-  return fetch(`${API_BASE}/api/gallery`)
-    .then(r => {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json();
-    })
-    .then(data => {
-      galleryItemsClient = data || [];
-      renderGalleryClient();
-    })
-    .catch(err => {
-      console.error('Error cargando galería en cliente', err);
-      galleryItemsClient = [];
-      renderGalleryClient();
-    });
-}
-
-function renderGalleryClient() {
-  if (!galleryGridEl) return;
-
-  galleryGridEl.innerHTML = '';
-  if (!galleryItemsClient.length) {
-    galleryGridEl.innerHTML =
-      '<p class="text-[11px] text-neutral-500">Pronto verás aquí fotos de trabajos recientes.</p>';
-    return;
-  }
-
-  galleryItemsClient
-    .slice()
-    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
-    .forEach(item => {
-      const card = document.createElement('div');
-      card.className =
-        'border border-neutral-800 rounded-xl overflow-hidden bg-neutral-950/80 flex flex-col';
-
-      card.innerHTML = `
-        <div class="w-full h-40 bg-neutral-900 overflow-hidden flex items-center justify-center">
-          ${
-            item.imageUrl
-              ? `<img src="${item.imageUrl}" alt="${item.title || ''}" class="w-full h-full object-cover" />`
-              : '<span class="text-[11px] text-neutral-500">Sin imagen</span>'
-          }
-        </div>
-        <div class="p-2 space-y-1 text-[11px]">
-          <div class="font-semibold text-neutral-100 truncate">
-            ${item.title || 'Trabajo del estilista'}
-          </div>
-          ${
-            item.description
-              ? `<div class="text-neutral-400 line-clamp-2">${item.description}</div>`
-              : ''
-          }
-        </div>
-      `;
-      galleryGridEl.appendChild(card);
-    });
-}
-
-// ========= UI DE TURNOS =========
 
 function showStep(step) {
   for (const n in stepPanels) {
@@ -289,13 +195,9 @@ function renderCalendar() {
     if (!isPast) {
       btn.addEventListener('click', () => {
         selectedDate = date;
-
-        // Cargar turnos de ese día → para limitar a máximo 2 por hora
-        loadAppointmentsForSelectedDate().then(() => {
-          renderCalendar();
-          renderTimeSlots();
-          validateStep2();
-        });
+        renderCalendar();
+        renderTimeSlots();
+        validateStep2();
       });
     }
 
@@ -312,38 +214,21 @@ function renderTimeSlots() {
     timeSlotsEl.appendChild(msg);
     return;
   }
-
   defaultTimeSlots.forEach(time => {
-    // contamos cuántos turnos hay para esta hora (no cancelados)
-    const countAtTime = appointments.filter(a =>
-      (a.time || '') === time && a.status !== 'cancelado'
-    ).length;
-
-    const isFull = countAtTime >= 2;
     const isSelected = selectedTime === time;
-
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.textContent = isFull ? `${time} (lleno)` : time;
-
+    btn.textContent = time;
     btn.className =
       'px-3 py-1.5 rounded-full border text-[11px] ' +
-      (isFull
-        ? 'border-neutral-700 text-neutral-500 bg-neutral-900/60 cursor-not-allowed'
-        : isSelected
-          ? 'border-amber-400 bg-amber-400/10 text-amber-100'
-          : 'border-neutral-700 text-neutral-200 hover:border-amber-400/70 hover:bg-neutral-900');
-
-    if (!isFull) {
-      btn.addEventListener('click', () => {
-        selectedTime = time;
-        renderTimeSlots();
-        validateStep2();
-      });
-    } else {
-      btn.disabled = true;
-    }
-
+      (isSelected
+        ? 'border-amber-400 bg-amber-400/10 text-amber-100'
+        : 'border-neutral-700 text-neutral-200 hover:border-amber-400/70 hover:bg-neutral-900');
+    btn.addEventListener('click', () => {
+      selectedTime = time;
+      renderTimeSlots();
+      validateStep2();
+    });
     timeSlotsEl.appendChild(btn);
   });
 }
@@ -452,7 +337,6 @@ function loadClientAppointmentsByContact(contact) {
     return;
   }
 
-  // Traemos todos los turnos y filtramos por contacto en el front.
   fetch(`${API_BASE}/api/appointments`)
     .then(r => {
       if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -468,37 +352,6 @@ function loadClientAppointmentsByContact(contact) {
       console.error('Error cargando turnos del cliente', err);
       clientAppointmentsListEl.innerHTML =
         '<p class="text-[11px] text-red-300">No se pudieron cargar tus turnos. Probá de nuevo en unos minutos.</p>';
-    });
-}
-
-function loadAppointmentsForSelectedDate() {
-  if (!selectedDate) {
-    appointments = [];
-    return Promise.resolve();
-  }
-
-  const dayStr = selectedDate.toISOString().slice(0, 10); // YYYY-MM-DD
-
-  return fetch(`${API_BASE}/api/appointments`)
-    .then(r => {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json();
-    })
-    .then(data => {
-      // Guardamos SOLO los turnos de ese día y que no estén cancelados
-      appointments = (data || []).filter(a => {
-        const d = new Date(a.getDateISO || a.date);
-        const dateStr = a.dateISO || a.date;
-        if (!dateStr) return false;
-        const d2 = new Date(dateStr);
-        if (isNaN(d2)) return false;
-        const dStr = d2.toISOString().slice(0, 10);
-        return dStr === dayStr && a.status !== 'cancelado';
-      });
-    })
-    .catch(err => {
-      console.error('Error cargando turnos del día', err);
-      appointments = [];
     });
 }
 
@@ -557,7 +410,6 @@ function onConfirmAppointment() {
     status: 'pendiente',
   };
 
-  // Guardar turno en backend
   fetch(`${API_BASE}/api/appointments`, {
     method: "POST",
     headers: {
@@ -567,17 +419,14 @@ function onConfirmAppointment() {
   })
     .then(async r => {
       if (!r.ok) {
-        let body = null;
+        let msg = 'No se pudo guardar el turno. Intentá más tarde.';
         try {
-          body = await r.json();
+          const errJson = await r.json();
+          if (errJson && errJson.error) {
+            msg = errJson.error;
+          }
         } catch (_) {}
-
-        // si viene del backend con código de horario lleno
-        if (r.status === 409 && body && body.code === 'TIME_SLOT_FULL') {
-          throw { type: 'slot_full', message: body.error || 'La hora seleccionada ya está completa.' };
-        }
-
-        throw new Error('HTTP ' + r.status);
+        throw new Error(msg);
       }
       return r.json();
     })
@@ -589,18 +438,13 @@ function onConfirmAppointment() {
       clientNameInput.value = '';
       clientContactInput.value = '';
 
-      // opcional: refrescar listado de "Tus turnos" si ya puso el mismo contacto
       if (clientLookupContactInput && clientLookupContactInput.value.trim()) {
         loadClientAppointmentsByContact(clientLookupContactInput.value.trim());
       }
     })
     .catch(err => {
-      if (err && err.type === 'slot_full') {
-        openGenericModal('Horario no disponible', err.message);
-        return;
-      }
       console.error(err);
-      openGenericModal('Error', 'No se pudo guardar el turno. Intentalo más tarde.');
+      openGenericModal('Error', err.message || 'No se pudo guardar el turno. Intentalo más tarde.');
     });
 }
 
@@ -652,29 +496,100 @@ function initSteps() {
   confirmAppointmentBtn.addEventListener('click', onConfirmAppointment);
 }
 
+// =================== GALERÍA CLIENTE ===================
+
+function renderGalleryClient() {
+  if (!galleryGridEl) return;
+
+  galleryGridEl.innerHTML = '';
+
+  if (!galleryItems.length) {
+    galleryGridEl.innerHTML =
+      '<p class="text-[11px] text-neutral-500">Próximamente más trabajos en la galería.</p>';
+    return;
+  }
+
+  galleryItems.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'border border-neutral-800 rounded-2xl bg-neutral-950/80 overflow-hidden flex flex-col';
+
+    card.innerHTML = `
+      <div class="aspect-[4/3] bg-neutral-900 overflow-hidden">
+        <img
+          src="${item.imageData}"
+          alt="${item.title || 'Trabajo de la galería'}"
+          class="w-full h-full object-cover"
+        />
+      </div>
+      <div class="p-2.5 text-[11px] flex flex-col gap-1">
+        <div class="font-semibold text-neutral-100">${item.title || 'Sin título'}</div>
+      </div>
+    `;
+
+    galleryGridEl.appendChild(card);
+  });
+}
+
+function loadGalleryForClient() {
+  if (!galleryGridEl) return Promise.resolve();
+
+  return fetch(`${API_BASE}/api/gallery`)
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(data => {
+      galleryItems = Array.isArray(data) ? data : [];
+      renderGalleryClient();
+    })
+    .catch(err => {
+      console.error('Error cargando galería en cliente', err);
+      galleryItems = [];
+      renderGalleryClient();
+    });
+}
+
+// =================== CARGA SERVICIOS / ESTILISTAS DESDE BACKEND ===================
+
+function loadServicesAndStylists() {
+  return Promise.all([
+    fetch(`${API_BASE}/api/services`).then(r => r.json()),
+    fetch(`${API_BASE}/api/stylists`).then(r => r.json())
+  ])
+    .then(([srv, sty]) => {
+      services = srv && srv.length ? srv : defaultServices;
+      stylists = sty && sty.length ? sty : defaultStylists;
+      setData(LS_SERVICES_KEY, services);  // opcional: cache offline
+      setData(LS_STYLISTS_KEY, stylists);
+      renderServices();
+      renderStylists();
+      validateStep1();
+    })
+    .catch(err => {
+      console.error("Error cargando servicios/estilistas del backend", err);
+      services = getData(LS_SERVICES_KEY, defaultServices);
+      stylists = getData(LS_STYLISTS_KEY, defaultStylists);
+      renderServices();
+      renderStylists();
+      validateStep1();
+    });
+}
+
 // =================== INICIO DOM ===================
 
 document.addEventListener('DOMContentLoaded', () => {
-  // 1) Traemos servicios/estilistas desde backend
-  // 2) Traemos galería (si existe contenedor)
   Promise.all([
     loadServicesAndStylists(),
     loadGalleryForClient()
-  ])
-    .then(() => {
-      initSteps();
-      initModals();
+  ]).then(() => {
+    initSteps();
+    initModals();
 
-      if (clientLookupBtn && clientLookupContactInput) {
-        clientLookupBtn.addEventListener('click', () => {
-          const contact = clientLookupContactInput.value || '';
-          loadClientAppointmentsByContact(contact);
-        });
-      }
-    })
-    .catch(() => {
-      // aunque falle algo, inicializamos igual
-      initSteps();
-      initModals();
-    });
+    if (clientLookupBtn && clientLookupContactInput) {
+      clientLookupBtn.addEventListener('click', () => {
+        const contact = clientLookupContactInput.value || '';
+        loadClientAppointmentsByContact(contact);
+      });
+    }
+  });
 });
