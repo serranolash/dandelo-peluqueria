@@ -1,22 +1,27 @@
-const CACHE_NAME = 'dandelo-pwa-v5';
+// service-worker.js
+
+// ⚡ Subí este número cuando hagas cambios importantes en el frontend
+const CACHE_NAME = 'dandelo-pwa-v6';
+
 const URLS_TO_CACHE = [
-  '/',
+  '/',              // raíz
   '/index.html',
   '/admin.html',
   '/style.css',
-  '/app.js',
-  '/admin.js',
   '/manifest.json',
-  '/logo-lion.svg'
+  '/logo-lion.svg',
+  '/assets/lion-bg.png', // si existe este archivo en producción
 ];
 
+// 👉 INSTALACIÓN: precache del “shell” básico
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(URLS_TO_CACHE))
   );
-  self.skipWaiting();
+  self.skipWaiting(); // toma control sin esperar
 });
 
+// 👉 ACTIVACIÓN: eliminar caches viejos
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -30,19 +35,27 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// 👉 ESTRATEGIA DE FETCH:
+// - NO tocamos llamadas a API (tu backend en Railway).
+// - Navegación (HTML) → network-first con fallback a cache.
+// - Archivos estáticos (CSS, imágenes, JS) → stale-while-revalidate.
 self.addEventListener('fetch', (event) => {
   const req = event.request;
 
+  // Sólo manejamos GET
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
 
-  // ❗ No cachear API: siempre a la red
-  if (url.pathname.startsWith('/api/')) {
-    return; // dejamos que el navegador vaya directo al backend
+  // 1) NO interceptar requests a tu backend (dominio externo)
+  //    Esto en realidad ya lo maneja el navegador solo, porque
+  //    el SW tiene scope sólo sobre su propio origen (Netlify),
+  //    pero lo dejamos documentado:
+  if (!url.origin.includes(self.location.origin)) {
+    return; // dejamos pasar tal cual
   }
 
-  // Navegación (index, admin, refrescos) → network-first
+  // 2) Navegación → network-first
   if (req.mode === 'navigate') {
     event.respondWith(
       fetch(req)
@@ -58,7 +71,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Resto (CSS, JS, imágenes estáticas) → cache-first con actualización en segundo plano
+  // 3) Recursos estáticos (CSS, imágenes, JS, etc.) → cache primero,
+  //    pero actualizamos en segundo plano (stale-while-revalidate).
   event.respondWith(
     caches.match(req).then((cached) => {
       const fetchPromise = fetch(req)
@@ -69,7 +83,13 @@ self.addEventListener('fetch', (event) => {
           }
           return res;
         })
-        .catch(() => cached);
+        .catch(() => {
+          // si falla red, devolvemos lo que haya en caché (si existe)
+          return cached;
+        });
+
+      // si ya hay en caché, lo devolvemos rápido y actualizamos en 2º plano
+      // si NO hay en caché, esperamos al fetch
       return cached || fetchPromise;
     })
   );
